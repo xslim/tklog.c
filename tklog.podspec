@@ -12,7 +12,7 @@ Pod::Spec.new do |s|
   s.author           = { "Taras Kalapun" => "t.kalapun@gmail.com" }
   s.source           = { :git => "https://github.com/xslim/tklog.c.git", :tag => s.version.to_s }
 
-  s.platform     = :ios, '3.0'
+  s.platform     = :ios, '6.0'
   s.requires_arc = false
 
   s.source_files = ['tklog.h', 'tklog.c']
