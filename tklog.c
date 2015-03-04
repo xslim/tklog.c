@@ -11,9 +11,6 @@
 
 static tklog_t *_tklog_instance = NULL;
 static _tklog_level_t _tklog_default_level = tklog_vError;
-//static uint32_t _log_components_count = 0;
-//static char *_log_components = NULL;
-//static uint32_t *_log_components_levels = 0;
 
 
 const char * const _tklog_level_header_1[_tklog_level_t_count] = {
@@ -44,7 +41,7 @@ const char * const _tklog_level_header_1c[_tklog_level_t_count] = {
     COLORS_BLUE    "T" COLORS_RESET
 };
 
-int _log_component_position(tklog_t *log, const char *name) {
+int _tklog_component_position(tklog_t *log, const char *name) {
     uint32_t count = log->components_count;
     for (uint32_t c = 0; c < count; c++) {
         if (strcmp(name, log->components[c]) == 0) {
@@ -129,11 +126,6 @@ void tklog_add_component(const char *name) {
 }
 
 
-//void tklog_set_components(char *components[], uint32_t count) {
-//    _log_components = *components;
-//    _log_components_count = count;
-//}
-
 void tklog_log_line(const char *str) {
     tklog_t *log = tklog_instance();
     if (log->driver->render_line) {
@@ -144,7 +136,7 @@ void tklog_log_line(const char *str) {
 void tklog_vlog_component(const char *component, _tklog_level_t level, const char *format, va_list args) {
     tklog_t *log = tklog_instance();
     
-    int pos = _log_component_position(log, component);
+    int pos = _tklog_component_position(log, component);
     if (pos < 0) {
         // Add if not there
         pos = _tklog_add_component(log, component);
@@ -234,7 +226,7 @@ void tklog_configure_by_name(const char *name, _tklog_level_t level) {
         }
     } else {
         // no wildcard suffix was specified
-        int pos = _log_component_position(log, name);
+        int pos = _tklog_component_position(log, name);
         if (pos < 0) {
             pos = _tklog_add_component(log, name);
         }
