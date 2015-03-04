@@ -15,7 +15,7 @@ CURR_DIR=`pwd`
 OUT_DIR=${2}
 
 if [ -z "${OUT_DIR}" ]; then
-  echo "No path specified, using current"
+  echo "No path specified, using current: ${CURR_DIR}"
   OUT_DIR=CURR_DIR
 fi
 
