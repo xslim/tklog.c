@@ -14,9 +14,14 @@ NEW_NAME="${1}log"
 CURR_DIR=`pwd`
 OUT_DIR=${2}
 
+if [ -z "${CURR_DIR}" ]; then
+  echo "Can't do pwd"
+  exit 0;
+fi
+
 if [ -z "${OUT_DIR}" ]; then
   echo "No path specified, using current: ${CURR_DIR}"
-  OUT_DIR=CURR_DIR
+  OUT_DIR="${CURR_DIR}"
 fi
 
 cd "${OUT_DIR}"
