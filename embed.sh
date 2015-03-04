@@ -33,6 +33,7 @@ rm -rf "${NEW_NAME}.c"
 curl -sLO "${RAW_URL}/${TPL_NAME}.h"
 curl -sLO "${RAW_URL}/${TPL_NAME}.c"
 
+echo "${TPL_NAME} -> ${NEW_NAME}"
 sed "s/${TPL_NAME}/${NEW_NAME}/g" "${TPL_NAME}.h" > "${NEW_NAME}.h" 
 sed "s/${TPL_NAME}/${NEW_NAME}/g" "${TPL_NAME}.c" > "${NEW_NAME}.c"
 
