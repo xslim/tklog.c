@@ -28,10 +28,20 @@ log_info(@"Initialized version: %@", @"0.1.1");
 
 ## Installation
 
-tklog is available through [CocoaPods](http://cocoapods.org). To install
+`tklog` is available through [CocoaPods](http://cocoapods.org). To install
 it, simply add the following line to your Podfile:
 
     pod "tklog"
+
+## Embedding
+
+You can embed the library with custom name. To do so, run
+
+``` sh
+sh <(curl -sL https://github.com/xslim/tklog.c/raw/master/embed.sh) myprefix Libs/mylog
+```
+
+This will download the latest version and replase `tklog` with `myprefixlog`
 
 ## Author
 
