@@ -90,6 +90,9 @@ int _tklog_add_component(tklog_t *log, const char *name) {
 }
 
 int _tklog_detect_colors(void) {
+#if DEBUG
+    return 1;
+#endif
     char *xcode_colors = getenv("XcodeColors");
     if (xcode_colors && (strcmp(xcode_colors, "YES") == 0)) {
         return 1;
@@ -268,10 +271,15 @@ void tklog_log_line(const char *component, int level, const char *prefix, const 
     
     char *buf;
     
-    if (log->file) {
-        tklog_color_line(component, level, prefix, str, 0, &buf);
-        fprintf(log->file, "%s", buf);
-        free(buf);
+    if (log->filepath) {
+        log->file = fopen(log->filepath, "w");
+        if (log->file != NULL) {
+            tklog_color_line(component, level, prefix, str, 0, &buf);
+            fprintf(log->file, "%s\n", buf);
+            free(buf);
+            fclose(log->file);
+        }
+
     }
     
     if (log->driver->render_line) {
@@ -326,6 +334,7 @@ int tklog_set_log_file(const char *filepath) {
     
     log->filepath = malloc(sizeof(char) * (strlen(filepath) + 1));
     strcpy(log->filepath, filepath);
+    fclose(log->file);
     
     return 1;
     
