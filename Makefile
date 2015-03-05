@@ -10,6 +10,7 @@ OBJS = $(SRC:.c=.o)
 TESTS = $(wildcard test*.c)
 
 test: $(TESTS)
+	@rm -rf test
 	@rm -rf *.o
 	@$(CC) $(CFLAGS) $(SRC) -o test
 	@./test
