@@ -8,6 +8,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <ctype.h>
+#include <time.h>
 
 static tklog_t *_tklog_instance = NULL;
 static _tklog_level_t _tklog_default_level = tklog_vError;
@@ -23,13 +24,15 @@ const char * const _tklog_level_header_1[_tklog_level_t_count] = {
     "T"
 };
 
-#define COLORS_ESCAPE "\033["
-#define COLORS_RESET  COLORS_ESCAPE ";"
-#define COLORS_RED COLORS_ESCAPE "fg255,0,0;"
-#define COLORS_YELLOW COLORS_ESCAPE "fg255,255,0;"
-#define COLORS_PURPLE COLORS_ESCAPE "fg255,0,255;"
-#define COLORS_BLUE COLORS_ESCAPE "fg0,0,255;"
-#define COLORS_GREEN COLORS_ESCAPE "fg0,255,0;"
+#define COLORS_ESCAPE   "\033["
+#define COLORS_RESET    COLORS_ESCAPE ";"
+#define COLORS_RED      COLORS_ESCAPE "fg255,0,0;"
+#define COLORS_YELLOW   COLORS_ESCAPE "fg255,255,0;"
+#define COLORS_PURPLE   COLORS_ESCAPE "fg255,0,255;"
+#define COLORS_BLUE     COLORS_ESCAPE "fg0,0,255;"
+#define COLORS_GREEN    COLORS_ESCAPE "fg0,255,0;"
+#define COLORS_C        COLORS_ESCAPE "fg255,155,0;"
+#define COLORS_P        COLORS_ESCAPE "fg255,155,155;"
 
 const char * const _tklog_level_header_1c[_tklog_level_t_count] = {
     "-",
@@ -86,10 +89,24 @@ int _tklog_add_component(tklog_t *log, const char *name) {
     return current;
 }
 
+int _tklog_detect_colors(void) {
+    char *xcode_colors = getenv("XcodeColors");
+    if (xcode_colors && (strcmp(xcode_colors, "YES") == 0)) {
+        return 1;
+    }
+    
+    
+    return 0;
+}
+
 tklog_t *
 tklog_instance(void) {
     if (!_tklog_instance) {
         _tklog_instance = malloc(sizeof(tklog_t));
+        
+        _tklog_instance->filepath = NULL;
+        _tklog_instance->file = NULL;
+        _tklog_instance->use_colors = _tklog_detect_colors();
         
         _tklog_instance->components_count = 0;
         _tklog_instance->components = NULL;
@@ -98,7 +115,10 @@ tklog_instance(void) {
         _tklog_instance->default_log_level = _tklog_default_level;
         
         _tklog_instance->driver = malloc(sizeof(tklog_driver));
+        _tklog_instance->driver->render_linec = &tklog_renderer_linec;
         _tklog_instance->driver->render_line = &tklog_renderer_line;
+        
+        
         
         _tklog_add_component(_tklog_instance, _tklog_default_component);
     }
@@ -107,7 +127,7 @@ tklog_instance(void) {
 }
 
 
-void tklog_init(char *components[], uint32_t count) {
+void tklog_init(char *components[], int count) {
     if (_tklog_instance) {
         // error
         return;
@@ -126,14 +146,8 @@ void tklog_add_component(const char *name) {
 }
 
 
-void tklog_log_line(const char *str) {
-    tklog_t *log = tklog_instance();
-    if (log->driver->render_line) {
-        log->driver->render_line(str);
-    }
-}
 
-void tklog_vlog_component(const char *component, _tklog_level_t level, const char *format, va_list args) {
+int tklog_component_active(const char *component, _tklog_level_t level) {
     tklog_t *log = tklog_instance();
     
     int pos = _tklog_component_position(log, component);
@@ -144,53 +158,11 @@ void tklog_vlog_component(const char *component, _tklog_level_t level, const cha
     
     _tklog_level_t component_level = log->components_levels[pos];
     if (component_level < level) {
-        return;
+        return 0;
     }
-    
-    char *str;
-    vasprintf(&str, format, args);
-    
-    char *buf;
-    
-#define log_printf_format "%s %s: %s"
-#if DEBUG
-#define log_printf_level _tklog_level_header_1c[level]
-#else
-#define log_printf_level _tklog_level_header_1[level]
-#endif
-    
-    asprintf(&buf, log_printf_format, log_printf_level, component, str);
-    tklog_log_line(buf);
-    free(buf);
-    
-    free(str);
+    return 1;
 }
 
-void tklog_log_component(const char *component, _tklog_level_t level, const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-    tklog_vlog_component(component, level, format, args);
-    va_end(args);
-}
-
-
-void tklog_logf(const char *component,
-                uint32_t level,
-                const char *filename,
-                uint32_t line,
-                const char *function,
-                const char *format, ...)
-{
-    char *buf;
-    asprintf(&buf, "%s:%d:%s: %s", filename, line, function, format);
-
-    va_list args;
-    va_start(args, format);
-    tklog_vlog_component(component, level, buf, args);
-    va_end(args);
-    
-    free(buf);
-}
 
 // Configures the given log level for the given log component(s).
 
@@ -234,12 +206,127 @@ void tklog_configure_by_name(const char *name, _tklog_level_t level) {
     }
 }
 
+char *tklog_get_time(void) {
+    struct tm *sTm;
+    time_t now = time (0);
+    sTm = gmtime(&now);
+    
+    
+    static char _retval[9]; // 20: "%Y-%m-%d %H:%M:%S"
+    strftime(_retval, sizeof(_retval), "%H:%M:%S", sTm);
+    return _retval;
+}
 
-void tklog_set_render_line(void (*render_line_ptr)(const char *str)) {
+
+void tklog_set_enable_colors(int enable) {
+    tklog_t *log = tklog_instance();
+    log->use_colors = (enable) ? 1 : 0;
+}
+
+void tklog_set_render_linec(void (*render_line_ptr)(const char *component, int level, const char *prefix, const char *str))
+{
+    tklog_t *log = tklog_instance();
+    log->driver->render_linec = render_line_ptr;
+}
+
+void tklog_set_render_line(void (*render_line_ptr)(const char *str))
+{
     tklog_t *log = tklog_instance();
     log->driver->render_line = render_line_ptr;
 }
 
+void tklog_color_line(const char *component, int level, const char *prefix, const char *str, int color, char **buf) {
+//    char *buf;
+    
+    if (color) {
+        asprintf(buf, "%s %s " COLORS_C "%s:" COLORS_RESET COLORS_P " %s:" COLORS_RESET " %s",
+                 tklog_get_time(), _tklog_level_header_1c[level], component, prefix, str);
+    } else {
+        asprintf(buf, "%s %s %s: %s: %s",
+                 tklog_get_time(), _tklog_level_header_1[level], component, prefix, str);
+    }
+
+//    free(buf);
+}
+
+void tklog_renderer_linec(const char *component, int level, const char *prefix, const char *str) {
+    tklog_t *log = tklog_instance();
+    char *buf;
+    tklog_color_line(component, level, prefix, str, log->use_colors, &buf);
+    printf("%s\n", buf);
+    free(buf);
+}
+
 void tklog_renderer_line(const char *str) {
     printf("%s\n", str);
+}
+
+
+void tklog_log_line(const char *component, int level, const char *prefix, const char *str) {
+
+    tklog_t *log = tklog_instance();
+    
+    char *buf;
+    
+    if (log->file) {
+        tklog_color_line(component, level, prefix, str, 0, &buf);
+        fprintf(log->file, "%s", buf);
+        free(buf);
+    }
+    
+    if (log->driver->render_line) {
+        tklog_color_line(component, level, prefix, str, log->use_colors, &buf);
+        log->driver->render_line(buf);
+        free(buf);
+    }
+    
+    
+}
+
+void tklog_log_linef(const char *component, int level, const char *func, int line, const char *format, ...) {
+    char *buf;
+    
+    va_list args;
+    va_start(args, format);
+    asprintf(&buf, format, args);
+    va_end(args);
+
+    char *prefix;
+    asprintf(&prefix, "%s:%d", func, line);
+    
+    tklog_log_line(component, level, prefix, buf);
+
+    free(prefix);
+    free(buf);
+}
+
+int tklog_set_log_file(const char *filepath) {
+    tklog_t *log = tklog_instance();
+    
+    if (log->file) {
+        fclose(log->file);
+    }
+    
+    if (log->filepath) {
+        free(log->filepath);
+        log->filepath = NULL;
+    }
+    
+    // no filepath given, quit
+    if (filepath == NULL || filepath[0] == '\0') {
+        return 0;
+    }
+    
+    log->file = fopen(filepath, "w");
+    if (log->file == NULL) {
+        //printf("Error opening file %s!\n", filepath);
+        tklog_log_linef("logger", tklog_vError, "", 0, "Error opening log file %s", filepath);
+        return 0;
+    }
+    
+    log->filepath = malloc(sizeof(char) * (strlen(filepath) + 1));
+    strcpy(log->filepath, filepath);
+    
+    return 1;
+    
 }

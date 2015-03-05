@@ -8,14 +8,24 @@
 
 
 #include <stdlib.h>
+#include <stdio.h>
 
-#if defined(__OBJC__) || (!defined(_tklog_C_MODE))
-#   define __tklog_objc_mode
+#if defined(__OBJC__) && (!defined(_tklog_C_MODE))
+#  define __tklog_objc_mode
 #endif
 
 #define _tklog_default_component "main"
+
 #ifndef log_component
-#define log_component _tklog_default_component
+#  define log_component _tklog_default_component
+#endif
+
+#ifndef log_component_prefix
+#  define log_component_prefix ""
+#endif
+
+#ifndef tklog_component
+#  define tklog_component log_component_prefix log_component
 #endif
 
 // Log levels, prefixed with 'adylcl_v'.
@@ -42,50 +52,82 @@ typedef int (*tklog_render_line)(const char *str);
 
 
 typedef struct {
+    void (*render_linec)(const char *component, int level, const char *prefix, const char *str);
     void (*render_line)(const char *str);
-    void (*render_component)(const char *str);
 } tklog_driver;
 
 
 typedef struct {
     tklog_driver *driver;
     _tklog_level_t default_log_level;
-//    int use_colors;
+    char *filepath;
+    FILE *file;
+    int use_colors;
     char **components;
     uint32_t components_count;
     uint32_t *components_levels;
 } tklog_t;
 
 // Public
-void tklog_init(char *components[], uint32_t count);
+void tklog_init(char *components[], int count);
 void tklog_add_component(const char *name);
 
 void tklog_configure_by_name(const char *name, _tklog_level_t level);
+int tklog_component_active(const char *component, _tklog_level_t level);
 
-void tklog_log_line(const char *str);
+void tklog_set_render_linec(void (*render_line_ptr)(const char *component, int level, const char *prefix, const char *str));
+void tklog_set_render_line(void (*render_line_ptr)(const char *str));
 
-void tklog_vlog_component(const char *component, _tklog_level_t level, const char *format, va_list args);
-void tklog_log_component(const char *component, _tklog_level_t level, const char *format, ...);
+int tklog_set_log_file(const char *filepath);
+void tklog_set_enable_colors(int enable);
 
-void tklog_logf(const char *component,
-                uint32_t level,
-                const char *filename,
-                uint32_t line,
-                const char *function,
-                const char *format, ...);
+char *tklog_get_time(void);
+
+
+void tklog_log_line(const char *component, int level, const char *prefix, const char *str);
+void tklog_log_linef(const char *component, int level, const char *func, int line, const char *format, ...);
+// Private
+void tklog_renderer_linec(const char *component, int level, const char *prefix, const char *str);
+void tklog_renderer_line(const char *str);
+
+extern const char * const _tklog_level_header_1[_tklog_level_t_count];  // header with 1 character
+extern const char * const _tklog_level_header_1c[_tklog_level_t_count]; // header with 1 character, colored
 
 #ifndef _tklog_filename
-#   define _tklog_filename                                                       \
-    (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+#  define _tklog_filename (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #endif
 
 #ifdef __tklog_objc_mode
-#define tklog_log(_component, _level, _format, ...)                             \
-    tklog_logf(_component, _level, _tklog_filename, __LINE__, __PRETTY_FUNCTION__, [[NSString stringWithFormat:_format, ## __VA_ARGS__] cStringUsingEncoding:NSUTF8StringEncoding])
+#  define _ady_str @""
 #else
-#define tklog_log(_component, _level, _format, ...)                             \
-    tklog_logf(_component, _level, _tklog_filename, __LINE__, __PRETTY_FUNCTION__, _format, ## __VA_ARGS__)
+#  define _ady_str ""
 #endif
+
+#if DEBUG
+#  define _tklog_debug_mode 1
+#  define _tklog_color 1
+#else
+#  define _tklog_debug_mode 0
+#  define _tklog_color 0
+#endif
+
+
+#define _tklog_prefix "" __func__ ":"__LINE__
+
+#ifdef __tklog_objc_mode
+#  define _tklog_c_str(s, ...) [[NSString stringWithFormat:s, ## __VA_ARGS__] cStringUsingEncoding:NSUTF8StringEncoding]
+#else
+#  define _tklog_c_str(s, ...) s, ## __VA_ARGS__
+#endif
+
+
+#define tklog_log(_component, _level, _format, ...)                             \
+    do {                                                                         \
+        if (tklog_component_active(_component, _level)) {                       \
+            tklog_log_linef(_component, _level, __func__, __LINE__, _tklog_c_str(_format, ## __VA_ARGS__)); \
+        } \
+    } while (0)
+
 
 #define tklog_log_if(_component, _level, _predicate, _format, ...)             \
     do {                                                                       \
@@ -95,48 +137,46 @@ void tklog_logf(const char *component,
     } while (0)
 
 
+
+#define tklog_configure(_component, _level) \
+    tklog_configure_by_name(log_component_prefix _component, _level)
+
+
 #define log_critical(...)                                                        \
-    tklog_log(log_component, tklog_vCritical, __VA_ARGS__)
+    tklog_log(tklog_component, tklog_vCritical, _ady_str __VA_ARGS__)
 
 #define log_error(...)                                                           \
-    tklog_log(log_component, tklog_vError, __VA_ARGS__)
+    tklog_log(tklog_component, tklog_vError, _ady_str __VA_ARGS__)
 
 #define log_warning(...)                                                         \
-    tklog_log(log_component, tklog_vWarning, __VA_ARGS__)
+    tklog_log(tklog_component, tklog_vWarning, _ady_str __VA_ARGS__)
 
 #define log_info(...)                                                            \
-    tklog_log(log_component, tklog_vInfo, __VA_ARGS__)
+    tklog_log(tklog_component, tklog_vInfo, _ady_str __VA_ARGS__)
 
 #define log_debug(...)                                                           \
-    tklog_log(log_component, tklog_vDebug, __VA_ARGS__)
+    tklog_log(tklog_component, tklog_vDebug, _ady_str __VA_ARGS__)
 
 #define log_trace(...)                                                           \
-    tklog_log(log_component, tklog_vTrace, __VA_ARGS__)
+    tklog_log(tklog_component, tklog_vTrace, _ady_str __VA_ARGS__)
 
 #define log_critical_if(predicate, ...)                                          \
-    tklog_log_if(log_component, tklog_vCritical, predicate, __VA_ARGS__)
+    tklog_log_if(tklog_component, tklog_vCritical, predicate, _ady_str __VA_ARGS__)
 
 #define log_error_if(predicate, ...)                                             \
-    tklog_log_if(log_component, tklog_vError, predicate, __VA_ARGS__)
+    tklog_log_if(tklog_component, tklog_vError, predicate, _ady_str __VA_ARGS__)
 
 #define log_warning_if(predicate, ...)                                           \
-    tklog_log_if(log_component, tklog_vWarning, predicate, __VA_ARGS__)
+    tklog_log_if(tklog_component, tklog_vWarning, predicate, _ady_str __VA_ARGS__)
 
 #define log_info_if(predicate, ...)                                              \
-    tklog_log_if(log_component, tklog_vInfo, predicate, __VA_ARGS__)
+    tklog_log_if(tklog_component, tklog_vInfo, predicate, _ady_str __VA_ARGS__)
 
 #define log_debug_if(predicate, ...)                                             \
-    tklog_log_if(log_component, tklog_vDebug, predicate, __VA_ARGS__)
+    tklog_log_if(tklog_component, tklog_vDebug, predicate, _ady_str __VA_ARGS__)
 
 #define log_trace_if(predicate, ...)                                             \
-    tklog_log_if(log_component, tklog_vTrace, predicate, __VA_ARGS__)
-
-void tklog_set_render_line(void (*render_line_ptr)(const char *str));
-
-
-// Private
-void tklog_renderer_line(const char *str);
-void tklog_render_component(const char *component, _tklog_level_t level, const char *str);
+    tklog_log_if(tklog_component, tklog_vTrace, predicate, _ady_str __VA_ARGS__)
 
 
 #endif /* defined(__Pods__tklog__) */
