@@ -279,10 +279,13 @@ void tklog_renderer_line(const char *str) {
     printf("%s\n", str);
 }
 
+//static pthread_mutex_t log_mutex;
 
 void tklog_log_line(const char *component, int level, const char *prefix, const char *str) {
     tklog_t *log = tklog_instance();
-    
+  
+    //pthread_mutex_lock(&log_mutex);
+
     if (log->filepath) {
         log->file = fopen(log->filepath, "w");
         if (log->file != NULL) {
@@ -299,7 +302,7 @@ void tklog_log_line(const char *component, int level, const char *prefix, const 
         log->driver->render_linec(component, level, prefix, str);
     }
     
-    
+    //pthread_mutex_unlock(&log_mutex);
 }
 
 void tklog_log_linef(const char *component, int level, const char *func, int line, const char *format, ...) {
