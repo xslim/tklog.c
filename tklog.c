@@ -281,14 +281,12 @@ void tklog_renderer_line(const char *str) {
 
 
 void tklog_log_line(const char *component, int level, const char *prefix, const char *str) {
-
     tklog_t *log = tklog_instance();
-    
-    char *buf;
     
     if (log->filepath) {
         log->file = fopen(log->filepath, "w");
         if (log->file != NULL) {
+            char *buf;
             tklog_color_line(component, level, prefix, str, 0, &buf);
             fprintf(log->file, "%s\n", buf);
             free(buf);
@@ -297,10 +295,8 @@ void tklog_log_line(const char *component, int level, const char *prefix, const 
 
     }
     
-    if (log->driver->render_line) {
-        tklog_color_line(component, level, prefix, str, log->use_colors, &buf);
-        log->driver->render_line(buf);
-        free(buf);
+    if (log->driver->render_linec) {
+        log->driver->render_linec(component, level, prefix, str);
     }
     
     
