@@ -71,6 +71,7 @@ typedef struct {
 // Public
 void tklog_init(char *components[], int count);
 void tklog_add_component(const char *name);
+void tklog_free();
 
 void tklog_configure_by_name(const char *name, _tklog_level_t level);
 int tklog_component_active(const char *component, _tklog_level_t level);
@@ -180,3 +181,4 @@ extern const char * const _tklog_level_header_1c[_tklog_level_t_count]; // heade
 
 
 #endif /* defined(__Pods__tklog__) */
+

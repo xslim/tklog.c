@@ -143,6 +143,20 @@ void tklog_init(char *components[], int count) {
     }
 }
 
+void tklog_free() {
+    tklog_t *log = tklog_instance();
+    
+    free(log->driver);
+    
+    if (log->components_levels) free(log->components_levels);
+    if (log->components)        free(log->components);
+    
+    if (log->filepath)  free(log->filepath);
+    if (log->file)      free(log->file);
+    
+    free(log);
+}
+
 void tklog_add_component(const char *name) {
     tklog_t *log = tklog_instance();
     _tklog_add_component(log, name);
@@ -256,7 +270,8 @@ void tklog_renderer_linec(const char *component, int level, const char *prefix, 
     tklog_t *log = tklog_instance();
     char *buf;
     tklog_color_line(component, level, prefix, str, log->use_colors, &buf);
-    printf("%s\n", buf);
+    //printf("%s\n", buf);
+    log->driver->render_line(buf);
     free(buf);
 }
 
@@ -339,3 +354,4 @@ int tklog_set_log_file(const char *filepath) {
     return 1;
     
 }
+
