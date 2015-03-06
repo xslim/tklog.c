@@ -43,6 +43,16 @@ sh <(curl -sL https://github.com/xslim/tklog.c/raw/master/embed.sh) myprefix Lib
 
 This will download the latest version and replase `tklog` with `myprefixlog`
 
+Or in a script, Ex `update_embedded_libs.sh`
+
+``` shell
+#!/bin/sh
+CURR_DIR=`pwd`
+curl -sL https://github.com/xslim/tklog.c/raw/master/embed.sh | \
+  bash /dev/stdin ady Classes/Public
+cd ${CURR_DIR}
+```
+
 ## Author
 
 Taras Kalapun, t.kalapun@gmail.com
