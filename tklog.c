@@ -90,9 +90,6 @@ int _tklog_add_component(tklog_t *log, const char *name) {
 }
 
 int _tklog_detect_colors(void) {
-#if DEBUG
-    return 1;
-#endif
     char *xcode_colors = getenv("XcodeColors");
     if (xcode_colors && (strcmp(xcode_colors, "YES") == 0)) {
         return 1;
