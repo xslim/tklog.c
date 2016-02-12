@@ -284,7 +284,7 @@ void tklog_log_line(const char *component, int level, const char *prefix, const 
     //pthread_mutex_lock(&log_mutex);
 
     if (log->filepath) {
-        log->file = fopen(log->filepath, "w");
+        log->file = fopen(log->filepath, "a");
         if (log->file != NULL) {
             char *buf;
             tklog_color_line(component, level, prefix, str, 0, &buf);
@@ -336,7 +336,7 @@ int tklog_set_log_file(const char *filepath) {
         return 0;
     }
     
-    log->file = fopen(filepath, "w");
+    log->file = fopen(filepath, "a");
     if (log->file == NULL) {
         //printf("Error opening file %s!\n", filepath);
         tklog_log_linef("logger", tklog_vError, "", 0, "Error opening log file %s", filepath);
